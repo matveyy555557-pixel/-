@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Химический конструктор</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+  .container { max-width: 680px; margin: 0 auto; }
+  h1 { color: #0f172a; font-size: 22px; text-align: center; }
+  .info { color: #475569; font-weight: bold; text-align: center; margin-bottom: 12px; }
+  .target { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px; white-space: pre-line; }
+  .option { display: block; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 8px 0; cursor: pointer; color: #334155; }
+  .option:hover { border-color: #2563eb; }
+  .option.disabled { cursor: default; }
+  .option.correct { border-color: #047857; background: #ecfdf5; }
+  .option.wrong { border-color: #dc2626; background: #fef2f2; }
+  .feedback { min-height: 60px; font-style: italic; text-align: center; margin: 10px 0; white-space: pre-line; }
+  .ok { color: #047857; } .bad { color: #dc2626; }
+  .btn { display: block; margin: 15px auto; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 16px; font-weight: bold; cursor: pointer; }
+  .btn:hover { background: #1d4ed8; }
+  .result { text-align: center; margin-top: 60px; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const TASKS = [
+  { target: "оксид кальция (CaO)", type: "соединение",
+    correct: "кальций и кислород", equation: "2Ca + O₂ → 2CaO",
+    distractors: [
+      ["карбонат кальция (без нагревания)", "При обычных условиях CaCO₃ стабилен; разложение на CaO и CO₂ требует сильного прокаливания."],
+      ["оксид кальция и вода", "В результате этой реакции образуется гашёная известь — гидроксид кальция: CaO + H₂O → Ca(OH)₂."],
+      ["кальций и соляная кислота", "Металл вытесняет водород, образуя соль: Ca + 2HCl → CaCl₂ + H₂↑."]
+    ]},
+  { target: "оксид магния (MgO)", type: "соединение",
+    correct: "магний и кислород (при горении)", equation: "2Mg + O₂ → 2MgO",
+    distractors: [
+      ["магний и вода", "При реакции с горячей водой образуется гидроксид магния и водород: Mg + 2H₂O → Mg(OH)₂ + H₂↑."],
+      ["хлорид магния и гидроксид натрия", "Реакция обмена даст нерастворимый гидроксид магния: MgCl₂ + 2NaOH → Mg(OH)₂↓ + 2NaCl."],
+      ["магний и серная кислота", "Произойдёт реакция замещения с образованием сульфата магния: Mg + H₂SO₄ → MgSO₄ + H₂↑."]
+    ]},
+  { target: "гидроксид кальция (Ca(OH)₂)", type: "соединение",
+    correct: "оксид кальция и вода", equation: "CaO + H₂O → Ca(OH)₂",
+    distractors: [
+      ["карбонат кальция и вода", "Карбонат кальция нерастворим и не реагирует с водой."],
+      ["хлорид кальция и соляная кислота", "Реакция между солью и кислотой с одинаковым анионом не идёт."],
+      ["оксид кальция и углекислый газ", "Образуется средняя соль — карбонат кальция: CaO + CO₂ → CaCO₃."]
+    ]},
+  { target: "хлорид цинка (ZnCl₂)", type: "замещение",
+    correct: "цинк и соляная кислота", equation: "Zn + 2HCl → ZnCl₂ + H₂↑",
+    distractors: [
+      ["цинк и хлорид натрия", "Цинк стоит правее натрия в ряду активности металлов и не может его вытеснить."],
+      ["оксид цинка и вода", "Оксид цинка не реагирует с водой."],
+      ["сульфат цинка и нитрат бария", "В осадок выпадет сульфат бария, а в растворе останется нитрат цинка: ZnSO₄ + Ba(NO₃)₂ → BaSO₄↓ + Zn(NO₃)₂."]
+    ]},
+  { target: "хлорид натрия (NaCl)", type: "обмен (нейтрализация)",
+    correct: "гидроксид натрия и соляная кислота", equation: "NaOH + HCl → NaCl + H₂O",
+    distractors: [
+      ["нитрат натрия и хлорид калия", "Все исходные вещества и возможные продукты растворимы — реакция обмена не идёт."],
+      ["натрий и вода", "Образуется щёлочь и водород: 2Na + 2H₂O → 2NaOH + H₂↑."],
+      ["сульфат натрия и соляная кислота", "Реакция не идёт, так как не образуется ни осадок, ни газ, ни слабый электролит."]
+    ]},
+  { target: "сульфат бария (BaSO₄)", type: "обмен",
+    correct: "хлорид бария и серная кислота", equation: "BaCl₂ + H₂SO₄ → BaSO₄↓ + 2HCl",
+    distractors: [
+      ["карбонат бария и вода", "Карбонат бария нерастворим в воде, реакция не идёт."],
+      ["оксид бария и соляная кислота", "Образуется хлорид бария и вода: BaO + 2HCl → BaCl₂ + H₂O."],
+      ["гидроксид бария и азотная кислота", "В результате нейтрализации получится нитрат бария: Ba(OH)₂ + 2HNO₃ → Ba(NO₃)₂ + 2H₂O."]
+    ]},
+  { target: "углекислый газ (CO₂)", type: "обмен (с последующим разложением H₂CO₃)",
+    correct: "карбонат кальция и соляная кислота", equation: "CaCO₃ + 2HCl → CaCl₂ + H₂O + CO₂↑",
+    distractors: [
+      ["оксид углерода(II) и вода", "Угарный газ не реагирует с водой при обычных условиях."],
+      ["карбонат натрия и гидроксид калия", "Между солью и щёлочью реакция не идёт, так как не образуется осадок или газ."],
+      ["графит и вода (при комнатной температуре)", "Без сильного нагрева углерод с водой не реагирует."]
+    ]},
+  { target: "медь (Cu)", type: "замещение",
+    correct: "железо и раствор сульфата меди(II)", equation: "Fe + CuSO₄ → FeSO₄ + Cu↓",
+    distractors: [
+      ["серебро и раствор хлорида меди(II)", "Серебро стоит правее меди в ряду активности металлов и не может её вытеснить."],
+      ["оксид меди(II) и вода", "Оксид меди(II) не реагирует с водой."],
+      ["гидроксид меди(II) и серная кислота", "Произойдёт растворение осадка с образованием соли: Cu(OH)₂ + H₂SO₄ → CuSO₄ + 2H₂O."]
+    ]},
+  { target: "вода (H₂O)", type: "соединение",
+    correct: "водород и кислород (при поджигании)", equation: "2H₂ + O₂ → 2H₂O",
+    distractors: [
+      ["азот и водород", "При синтезе из азота и водорода образуется аммиак: N₂ + 3H₂ ⇄ 2NH₃."],
+      ["углекислый газ и оксид кальция", "Образуется твёрдый карбонат кальция: CaO + CO₂ → CaCO₃."],
+      ["натрий и хлор", "Образуется поваренная соль: 2Na + Cl₂ → 2NaCl."]
+    ]},
+  { target: "оксид меди(II) (CuO)", type: "разложение",
+    correct: "гидроксид меди(II) (при нагревании)", equation: "Cu(OH)₂ → CuO + H₂O",
+    distractors: [
+      ["медь и соляная кислота", "Медь стоит правее водорода в ряду активности и не вытесняет его из HCl."],
+      ["сульфат меди(II) и хлорид натрия", "Оба вещества и предполагаемые продукты растворимы — реакция не идёт."],
+      ["гидроксид меди(II) и азотная кислота", "Образуется нитрат меди(II) и вода: Cu(OH)₂ + 2HNO₃ → Cu(NO₃)₂ + 2H₂O."]
+    ]}
+];
+
+const shuffle = arr => arr.slice().sort(() => Math.random() - 0.5);
+const app = document.getElementById("app");
+
+let tasks, idx, score, answered;
+
+function shuffleTasks() {
+  tasks = shuffle(TASKS).map(t => {
+    const options = shuffle([
+      { text: t.correct, ok: true, reason: null },
+      ...t.distractors.map(([text, reason]) => ({ text, ok: false, reason }))
+    ]);
+    return { ...t, options };
+  });
+}
+
+function startGame() {
+  shuffleTasks();
+  idx = 0; score = 0; answered = false;
+  renderTask();
+}
+
+function renderTask() {
+  if (idx >= tasks.length) return renderResults();
+  answered = false;
+  const t = tasks[idx];
+  app.innerHTML = `
+    <h1>🧪 Химический конструктор неорганических веществ</h1>
+    <div class="info">Задание ${idx + 1} из ${tasks.length} &nbsp;|&nbsp; Счёт: ${score}</div>
+    <div class="target">🎯 Цель: получить ${t.target}\n⚙️ Тип реакции: ${t.type}</div>
+    <div id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn" id="actionBtn" onclick="handleAction()">Ответить</button>`;
+  const box = document.getElementById("options");
+  t.options.forEach((o, i) => {
+    const div = document.createElement("div");
+    div.className = "option";
+    div.id = "opt" + i;
+    div.textContent = o.text;
+    div.onclick = () => { if (!answered) selectOption(i); };
+    box.appendChild(div);
+  });
+}
+
+let chosen = -1;
+function selectOption(i) {
+  chosen = i;
+  tasks[idx].options.forEach((_, k) =>
+    document.getElementById("opt" + k).style.borderColor = k === i ? "#2563eb" : "#e2e8f0");
+}
+
+function handleAction() {
+  const t = tasks[idx];
+  const btn = document.getElementById("actionBtn");
+  if (!answered) {
+    if (chosen === -1) { alert("Пожалуйста, выберите один из вариантов ответа!"); return; }
+    answered = true;
+    t.options.forEach((o, k) => {
+      const el = document.getElementById("opt" + k);
+      el.classList.add("disabled");
+      if (o.ok) el.classList.add("correct");
+    });
+    const o = t.options[chosen];
+    const fb = document.getElementById("feedback");
+    if (o.ok) {
+      score++;
+      fb.innerHTML = `<span class="ok">✅ Верно! Уравнение реакции: ${t.equation}</span>`;
+    } else {
+      document.getElementById("opt" + chosen).classList.add("wrong");
+      fb.innerHTML = `<span class="bad">❌ Неверно. ${o.reason}\n👉 Правильно: ${t.correct} (${t.equation})</span>`;
+    }
+    idx++;
+    btn.textContent = idx < tasks.length ? "Следующее задание" : "Посмотреть результаты";
+  } else {
+    renderTask();
+  }
+}
+
+function renderResults() {
+  const pct = (score / tasks.length) * 100;
+  let msg;
+  if (pct >= 80) msg = "Отличный результат! Вы превосходно разбираетесь в химических свойствах и типах реакций.";
+  else if (pct >= 50) msg = "Неплохо! Но стоит повторить химические свойства некоторых классов неорганических соединений.";
+  else msg = "Рекомендуем освежить в памяти теорию о химических реакциях и ряде активности металлов.";
+  app.innerHTML = `
+    <div class="result">
+      <h1>🏆 Тренировка завершена!</h1>
+      <p style="font-size:18px; color:#2563eb; font-weight:bold;">Ваш итоговый результат: ${score} из ${tasks.length}</p>
+      <p style="color:#475569;">${msg}</p>
+      <button class="btn" onclick="startGame()">Пройти заново</button>
+    </div>`;
+}
+
+startGame();
+</script>
+</body>
+</html>
